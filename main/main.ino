@@ -86,6 +86,7 @@ void loop() {
     GPS_Update();
 
   Sensors_Update();
+  update_status_data();
   Voice_Update();
   Speech_Update();
 

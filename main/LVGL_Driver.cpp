@@ -141,6 +141,9 @@ void Lvgl_Touchpad_Read(
         int16_t y =
             411 - tp_y;
 
+        Serial.print("TOUCH X = ");
+        Serial.println(x);
+
 
         data->point.x = x;
         data->point.y = y;
@@ -162,18 +165,13 @@ void Lvgl_Touchpad_Read(
              * LEFT SIDE
              */
             if(x < LEFT_TOUCH_ZONE)
-            {
-                Page_Touch_Left();
-            }
-
-
-            /*
-             * RIGHT SIDE
-             */
+                {
+                    Page_Touch_Right();
+                }
             else if(x > RIGHT_TOUCH_ZONE)
-            {
-                Page_Touch_Right();
-            }
+                {
+                    Page_Touch_Left();
+                }
 
 
             /*

@@ -1,5 +1,6 @@
 #include "LVGL_Example.h"
 #include <math.h>
+#include "sensors.h"
 
 /* =========================================================
    CONFIG
@@ -66,6 +67,7 @@ static void build_radar_page(lv_obj_t *parent);
 static void build_messages_page(lv_obj_t *parent);
 static void build_status_page(lv_obj_t *parent);
 static void page_manager_init();
+
 
 
 /* =========================================================
@@ -250,29 +252,16 @@ static void change_page(
 
 void Page_Touch_Left()
 {
-    if(!pages_ready || page_animating)
+    if(page_animating)
         return;
 
-    /*
-     * RADAR -> MESSAGES
-     */
     if(currentPage == PAGE_RADAR)
     {
-        change_page(
-            PAGE_MESSAGES,
-            -1
-        );
+        change_page(PAGE_MESSAGES, -1);
     }
-
-    /*
-     * STATUS -> RADAR
-     */
     else if(currentPage == PAGE_STATUS)
     {
-        change_page(
-            PAGE_RADAR,
-            -1
-        );
+        change_page(PAGE_RADAR, -1);
     }
 }
 
@@ -283,29 +272,16 @@ void Page_Touch_Left()
 
 void Page_Touch_Right()
 {
-    if(!pages_ready || page_animating)
+    if(page_animating)
         return;
 
-    /*
-     * RADAR -> STATUS
-     */
     if(currentPage == PAGE_RADAR)
     {
-        change_page(
-            PAGE_STATUS,
-            1
-        );
+        change_page(PAGE_STATUS, 1);
     }
-
-    /*
-     * MESSAGES -> RADAR
-     */
     else if(currentPage == PAGE_MESSAGES)
     {
-        change_page(
-            PAGE_RADAR,
-            1
-        );
+        change_page(PAGE_RADAR, 1);
     }
 }
 
@@ -546,42 +522,19 @@ void Status_UI()
 
 void Switch_Page(int dir)
 {
-    if(!pages_ready)
-        return;
-
     if(dir > 0)
     {
         if(currentPage == PAGE_RADAR)
-        {
-            change_page(
-                PAGE_STATUS,
-                1
-            );
-        }
+            change_page(PAGE_STATUS, 1);
         else if(currentPage == PAGE_MESSAGES)
-        {
-            change_page(
-                PAGE_RADAR,
-                1
-            );
-        }
+            change_page(PAGE_RADAR, 1);
     }
     else if(dir < 0)
     {
         if(currentPage == PAGE_RADAR)
-        {
-            change_page(
-                PAGE_MESSAGES,
-                -1
-            );
-        }
+            change_page(PAGE_MESSAGES, -1);
         else if(currentPage == PAGE_STATUS)
-        {
-            change_page(
-                PAGE_RADAR,
-                -1
-            );
-        }
+            change_page(PAGE_RADAR, -1);
     }
 }
 
@@ -1054,8 +1007,8 @@ static void build_status_page(lv_obj_t *parent)
 
     lv_label_set_text(
     self,
-    "HEART RATE     0 BPM\n"
-    "HEALTH         DEAD\n"
+    "HEART RATE     -- BPM\n"
+    "HEALTH         --\n"
     "LATITUDE       22.82\n"
     "LONGITUDE      75.94"
 );
@@ -1084,6 +1037,42 @@ static void build_status_page(lv_obj_t *parent)
         0,
         0
     );
+}
+
+void update_status_data()
+{
+    if(!pages_ready)
+        return;
+
+    if(currentPage != PAGE_STATUS)
+        return;
+
+    if(status_container == NULL)
+        return;
+
+    float heartRate = Sensors_GetHeartRate();
+    String health = Sensors_GetHealthState();
+
+    char status_text[160];
+
+    snprintf(
+        status_text,
+        sizeof(status_text),
+        "HEART RATE     %.0f BPM\n"
+        "HEALTH         %s\n"
+        "LATITUDE       22.82\n"
+        "LONGITUDE      75.94",
+        heartRate,
+        health.c_str()
+    );
+
+    // Find the label inside the status container
+    lv_obj_t *self = lv_obj_get_child(status_container, 0);
+
+    if(self != NULL)
+    {
+        lv_label_set_text(self, status_text);
+    }
 }
 
 

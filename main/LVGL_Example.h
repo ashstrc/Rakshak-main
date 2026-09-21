@@ -26,6 +26,7 @@ typedef struct
 
 /* ---------- UI FUNCTIONS ---------- */
 void Backlight_adjustment_event_cb(lv_event_t * e);
+void update_status_data();
 
 void Lvgl_Example1(void);
 void LVGL_Backlight_adjustment(uint8_t Backlight);
