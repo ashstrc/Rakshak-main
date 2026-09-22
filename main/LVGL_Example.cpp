@@ -1,6 +1,8 @@
 #include "LVGL_Example.h"
 #include <math.h>
 #include "sensors.h"
+#include "voice.h"
+#include <string.h>
 
 /* =========================================================
    CONFIG
@@ -16,6 +18,7 @@
 
 #define RADAR_RADIUS 180
 #define MAX_RANGE_M 30.0f
+#define MAX_RECENT_MESSAGES 4
 
 
 
@@ -57,6 +60,9 @@ static float pulse_radius[MAX_TARGETS] = {0};
 
 static lv_obj_t *msg_label;
 static lv_obj_t *status_container;
+
+static String recent_messages[MAX_RECENT_MESSAGES];
+static int recent_message_count = 0;
 
 
 #define PAGE_ANIMATION_TIME 180
@@ -833,9 +839,92 @@ lv_obj_set_style_line_opa(
 sweep_angle = 0;
 }
 
+
+// ============================================
+// MESSAGE HISTORY
+// ============================================
+
+static void Messages_AddRecent(const char *message);
+
 /* =========================================================
    MESSAGES PAGE
    ========================================================= */
+
+static void message_button_event(lv_event_t *e)
+{
+    const char *command =
+        (const char *)lv_event_get_user_data(e);
+
+    if(command == NULL)
+        return;
+
+    Serial.print("MESSAGE BUTTON: ");
+    Serial.println(command);
+
+    // Update UI first so we know the button definitely fired
+    if(strcmp(command, "ZORO SEND HELP") == 0)
+    {
+        Messages_AddRecent("HELP");
+    }
+    else if(strcmp(command, "ZORO SEND ENEMY") == 0)
+    {
+        Messages_AddRecent("ENEMY");
+    }
+    else if(strcmp(command, "ZORO SEND FALLBACK") == 0)
+    {
+        Messages_AddRecent("FALLBACK");
+    }
+    else if(strcmp(command, "ZORO SEND AMBUSH") == 0)
+    {
+        Messages_AddRecent("AMBUSH");
+    }
+
+    // Existing voice/message system
+    Voice_HandleCommand(command);
+}
+
+static void Messages_AddRecent(const char *message)
+{
+    if(message == NULL)
+        return;
+
+    // Shift older messages down
+    for(int i = MAX_RECENT_MESSAGES - 1; i > 0; i--)
+    {
+        recent_messages[i] = recent_messages[i - 1];
+    }
+
+    // Add newest message
+    recent_messages[0] = String("> ") + message;
+
+    if(recent_message_count < MAX_RECENT_MESSAGES)
+        recent_message_count++;
+
+    // Update UI if it already exists
+    if(msg_label == NULL)
+        return;
+
+    String text = "";
+
+    for(int i = 0; i < recent_message_count; i++)
+    {
+        text += recent_messages[i];
+
+        if(i < recent_message_count - 1)
+            text += "\n";
+    }
+
+    lv_label_set_text(
+        msg_label,
+        text.c_str()
+    );
+
+    lv_obj_set_style_text_color(
+        msg_label,
+        lv_color_hex(0xFFFFFF),
+        0
+    );
+}
 
 static void build_messages_page(lv_obj_t *parent)
 {
@@ -857,20 +946,243 @@ static void build_messages_page(lv_obj_t *parent)
     );
 
 
+    // ==============================
+    // TITLE
+    // ==============================
+
+    lv_obj_t *title = lv_label_create(parent);
+
+    lv_label_set_text(
+        title,
+        "MESSAGES"
+    );
+
+    lv_obj_set_style_text_color(
+        title,
+        lv_color_hex(0x00FF66),
+        0
+    );
+
+    lv_obj_align(
+        title,
+        LV_ALIGN_TOP_MID,
+        0,
+        28
+    );
+
+
+    // ==============================
+    // MESSAGE BUTTONS
+    // ==============================
+
+    lv_obj_t *help_btn = lv_btn_create(parent);
+
+    lv_obj_set_size(
+        help_btn,
+        110,
+        55
+    );
+
+    lv_obj_align(
+        help_btn,
+        LV_ALIGN_TOP_LEFT,
+        55,
+        75
+    );
+
+    lv_obj_add_event_cb(
+        help_btn,
+        message_button_event,
+        LV_EVENT_CLICKED,
+        (void *)"ZORO SEND HELP"
+    );
+
+    lv_obj_t *help_label = lv_label_create(help_btn);
+
+    lv_label_set_text(
+        help_label,
+        "HELP"
+    );
+
+    lv_obj_center(help_label);
+
+
+    lv_obj_t *enemy_btn = lv_btn_create(parent);
+
+    lv_obj_set_size(
+        enemy_btn,
+        110,
+        55
+    );
+
+    lv_obj_align(
+        enemy_btn,
+        LV_ALIGN_TOP_RIGHT,
+        -55,
+        75
+    );
+
+    lv_obj_add_event_cb(
+        enemy_btn,
+        message_button_event,
+        LV_EVENT_CLICKED,
+        (void *)"ZORO SEND ENEMY"
+    );
+
+    lv_obj_t *enemy_label = lv_label_create(enemy_btn);
+
+    lv_label_set_text(
+        enemy_label,
+        "ENEMY"
+    );
+
+    lv_obj_center(enemy_label);
+
+
+    lv_obj_t *fallback_btn = lv_btn_create(parent);
+
+    lv_obj_set_size(
+        fallback_btn,
+        110,
+        55
+    );
+
+    lv_obj_align(
+        fallback_btn,
+        LV_ALIGN_TOP_LEFT,
+        55,
+        145
+    );
+
+    lv_obj_add_event_cb(
+        fallback_btn,
+        message_button_event,
+        LV_EVENT_CLICKED,
+        (void *)"ZORO SEND FALLBACK"
+    );
+
+    lv_obj_t *fallback_label = lv_label_create(fallback_btn);
+
+    lv_label_set_text(
+        fallback_label,
+        "FALLBACK"
+    );
+
+    lv_obj_center(fallback_label);
+
+
+    lv_obj_t *ambush_btn = lv_btn_create(parent);
+
+    lv_obj_set_size(
+        ambush_btn,
+        110,
+        55
+    );
+
+    lv_obj_align(
+        ambush_btn,
+        LV_ALIGN_TOP_RIGHT,
+        -55,
+        145
+    );
+
+    lv_obj_add_event_cb(
+        ambush_btn,
+        message_button_event,
+        LV_EVENT_CLICKED,
+        (void *)"ZORO SEND AMBUSH"
+    );
+
+    lv_obj_t *ambush_label = lv_label_create(ambush_btn);
+
+    lv_label_set_text(
+        ambush_label,
+        "AMBUSH"
+    );
+
+    lv_obj_center(ambush_label);
+
+
+    // ==============================
+    // SECTION DIVIDER
+    // ==============================
+
+    lv_obj_t *divider = lv_obj_create(parent);
+
+    lv_obj_set_size(
+        divider,
+        300,
+        1
+    );
+
+    lv_obj_align(
+        divider,
+        LV_ALIGN_TOP_MID,
+        0,
+        220
+    );
+
+    lv_obj_set_style_bg_color(
+        divider,
+        lv_color_hex(0x00FF66),
+        0
+    );
+
+    lv_obj_set_style_border_width(
+        divider,
+        0,
+        0
+    );
+
+
+    // ==============================
+    // RECENT SENT TITLE
+    // ==============================
+
+    lv_obj_t *recent_title = lv_label_create(parent);
+
+    lv_label_set_text(
+        recent_title,
+        "RECENT SENT"
+    );
+
+    lv_obj_set_style_text_color(
+        recent_title,
+        lv_color_hex(0x00FF66),
+        0
+    );
+
+    lv_obj_align(
+        recent_title,
+        LV_ALIGN_TOP_MID,
+        0,
+        235
+    );
+
+
+    // ==============================
+    // RECENT MESSAGE AREA
+    // ==============================
+
     msg_label = lv_label_create(parent);
 
     lv_label_set_text(
         msg_label,
-        "NO MESSAGES"
+        "NO MESSAGES SENT"
     );
 
     lv_obj_set_style_text_color(
         msg_label,
-        lv_color_hex(0x00FF00),
+        lv_color_hex(0x777777),
         0
     );
 
-    lv_obj_center(msg_label);
+    lv_obj_align(
+        msg_label,
+        LV_ALIGN_TOP_MID,
+        0,
+        275
+    );
 }
 
 
