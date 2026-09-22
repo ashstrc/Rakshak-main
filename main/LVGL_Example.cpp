@@ -3,6 +3,7 @@
 #include "sensors.h"
 #include "voice.h"
 #include <string.h>
+#include "MIC_MSM.h"
 
 /* =========================================================
    CONFIG
@@ -351,6 +352,28 @@ void Page_Touch_Top()
 
     if(currentPage != PAGE_MIC)
         return;
+
+    /*
+     * Leaving MIC page always turns the microphone OFF.
+     */
+    if(MIC_IsEnabled())
+    {
+        MIC_SetEnabled(false);
+
+        if(mic_status_label != NULL)
+        {
+            lv_label_set_text(
+                mic_status_label,
+                "MIC OFF"
+            );
+
+            lv_obj_set_style_text_color(
+                mic_status_label,
+                lv_color_hex(0x777777),
+                0
+            );
+        }
+    }
 
     lv_obj_t *micPage = pages[PAGE_MIC];
     lv_obj_t *radarPage = pages[PAGE_RADAR];
@@ -1637,16 +1660,52 @@ static void mic_button_event(lv_event_t *e)
 {
     (void)e;
 
-    Serial.println();
-    Serial.println("==============================");
-    Serial.println("MIC BUTTON PRESSED");
-    Serial.println("MIC FUNCTION NOT IMPLEMENTED YET");
-    Serial.println("==============================");
+    /*
+     * Ignore any delayed/overlapping click event
+     * if we are no longer on the MIC page.
+     */
+    if(currentPage != PAGE_MIC)
+        return;
 
     /*
-     * Actual microphone ON/OFF functionality
-     * will be implemented later.
+     * Ignore clicks while a page transition is running.
      */
+    if(page_animating)
+        return;
+
+
+    bool newState =
+        !MIC_IsEnabled();
+
+    MIC_SetEnabled(newState);
+
+
+    if(MIC_IsEnabled())
+    {
+        lv_label_set_text(
+            mic_status_label,
+            "MIC LISTENING"
+        );
+
+        lv_obj_set_style_text_color(
+            mic_status_label,
+            lv_color_hex(0x00FF66),
+            0
+        );
+    }
+    else
+    {
+        lv_label_set_text(
+            mic_status_label,
+            "MIC OFF"
+        );
+
+        lv_obj_set_style_text_color(
+            mic_status_label,
+            lv_color_hex(0x777777),
+            0
+        );
+    }
 }
 
 
@@ -1783,147 +1842,207 @@ static void build_mic_page(lv_obj_t *parent)
 
 
     /* =====================================================
-       MIC SYMBOL
-       ===================================================== */
+   MIC SYMBOL
+   ===================================================== */
 
-    lv_obj_t *mic_body =
-        lv_obj_create(mic_button);
+/* -----------------------------------------------------
+   MIC BODY
+   ----------------------------------------------------- */
 
-    lv_obj_set_size(
-        mic_body,
-        42,
-        68
-    );
+lv_obj_t *mic_body =
+    lv_obj_create(mic_button);
 
-    lv_obj_align(
-        mic_body,
-        LV_ALIGN_CENTER,
-        0,
-        -8
-    );
+lv_obj_set_size(
+    mic_body,
+    38,
+    62
+);
 
-    lv_obj_set_style_radius(
-        mic_body,
-        21,
-        0
-    );
+lv_obj_align(
+    mic_body,
+    LV_ALIGN_CENTER,
+    0,
+    -12
+);
 
-    lv_obj_set_style_bg_color(
-        mic_body,
-        lv_color_hex(0x00FF66),
-        0
-    );
+lv_obj_set_style_radius(
+    mic_body,
+    19,
+    0
+);
 
-    lv_obj_set_style_bg_opa(
-        mic_body,
-        LV_OPA_COVER,
-        0
-    );
+lv_obj_set_style_bg_color(
+    mic_body,
+    lv_color_hex(0x00FF66),
+    0
+);
 
-    lv_obj_set_style_border_width(
-        mic_body,
-        0,
-        0
-    );
+lv_obj_set_style_bg_opa(
+    mic_body,
+    LV_OPA_COVER,
+    0
+);
 
-    lv_obj_clear_flag(
-        mic_body,
-        LV_OBJ_FLAG_CLICKABLE
-    );
+lv_obj_set_style_border_width(
+    mic_body,
+    0,
+    0
+);
 
-
-    /* =====================================================
-       MIC U-SHAPE
-       ===================================================== */
-
-    lv_obj_t *mic_arc =
-        lv_obj_create(mic_button);
-
-    lv_obj_set_size(
-        mic_arc,
-        78,
-        78
-    );
-
-    lv_obj_align(
-        mic_arc,
-        LV_ALIGN_CENTER,
-        0,
-        -2
-    );
-
-    lv_obj_set_style_radius(
-        mic_arc,
-        LV_RADIUS_CIRCLE,
-        0
-    );
-
-    lv_obj_set_style_bg_opa(
-        mic_arc,
-        LV_OPA_TRANSP,
-        0
-    );
-
-    lv_obj_set_style_border_width(
-        mic_arc,
-        4,
-        0
-    );
-
-    lv_obj_set_style_border_color(
-        mic_arc,
-        lv_color_hex(0x00FF66),
-        0
-    );
-
-    lv_obj_clear_flag(
-        mic_arc,
-        LV_OBJ_FLAG_CLICKABLE
-    );
+lv_obj_clear_flag(
+    mic_body,
+    LV_OBJ_FLAG_CLICKABLE
+);
 
 
-    /* =====================================================
-       MIC STAND
-       ===================================================== */
+/* -----------------------------------------------------
+   MIC U-SHAPE
+   ----------------------------------------------------- */
 
-    lv_obj_t *mic_stand =
-        lv_obj_create(mic_button);
+lv_obj_t *mic_arc =
+    lv_obj_create(mic_button);
 
-    lv_obj_set_size(
-        mic_stand,
-        5,
-        24
-    );
+lv_obj_set_size(
+    mic_arc,
+    76,
+    72
+);
 
-    lv_obj_align(
-        mic_stand,
-        LV_ALIGN_CENTER,
-        0,
-        46
-    );
+lv_obj_align(
+    mic_arc,
+    LV_ALIGN_CENTER,
+    0,
+    -5
+);
 
-    lv_obj_set_style_bg_color(
-        mic_stand,
-        lv_color_hex(0x00FF66),
-        0
-    );
+lv_obj_set_style_radius(
+    mic_arc,
+    LV_RADIUS_CIRCLE,
+    0
+);
 
-    lv_obj_set_style_bg_opa(
-        mic_stand,
-        LV_OPA_COVER,
-        0
-    );
+lv_obj_set_style_bg_opa(
+    mic_arc,
+    LV_OPA_TRANSP,
+    0
+);
 
-    lv_obj_set_style_border_width(
-        mic_stand,
-        0,
-        0
-    );
+lv_obj_set_style_border_width(
+    mic_arc,
+    4,
+    0
+);
 
-    lv_obj_clear_flag(
-        mic_stand,
-        LV_OBJ_FLAG_CLICKABLE
-    );
+lv_obj_set_style_border_color(
+    mic_arc,
+    lv_color_hex(0x00FF66),
+    0
+);
+
+lv_obj_clear_flag(
+    mic_arc,
+    LV_OBJ_FLAG_CLICKABLE
+);
+
+
+/* -----------------------------------------------------
+   MIC STEM
+   ----------------------------------------------------- */
+
+lv_obj_t *mic_stand =
+    lv_obj_create(mic_button);
+
+lv_obj_set_size(
+    mic_stand,
+    5,
+    24
+);
+
+lv_obj_align(
+    mic_stand,
+    LV_ALIGN_CENTER,
+    0,
+    44
+);
+
+lv_obj_set_style_radius(
+    mic_stand,
+    2,
+    0
+);
+
+lv_obj_set_style_bg_color(
+    mic_stand,
+    lv_color_hex(0x00FF66),
+    0
+);
+
+lv_obj_set_style_bg_opa(
+    mic_stand,
+    LV_OPA_COVER,
+    0
+);
+
+lv_obj_set_style_border_width(
+    mic_stand,
+    0,
+    0
+);
+
+lv_obj_clear_flag(
+    mic_stand,
+    LV_OBJ_FLAG_CLICKABLE
+);
+
+
+/* -----------------------------------------------------
+   MIC BASE
+   ----------------------------------------------------- */
+
+lv_obj_t *mic_base =
+    lv_obj_create(mic_button);
+
+lv_obj_set_size(
+    mic_base,
+    42,
+    5
+);
+
+lv_obj_align(
+    mic_base,
+    LV_ALIGN_CENTER,
+    0,
+    58
+);
+
+lv_obj_set_style_radius(
+    mic_base,
+    3,
+    0
+);
+
+lv_obj_set_style_bg_color(
+    mic_base,
+    lv_color_hex(0x00FF66),
+    0
+);
+
+lv_obj_set_style_bg_opa(
+    mic_base,
+    LV_OPA_COVER,
+    0
+);
+
+lv_obj_set_style_border_width(
+    mic_base,
+    0,
+    0
+);
+
+lv_obj_clear_flag(
+    mic_base,
+    LV_OBJ_FLAG_CLICKABLE
+);
 
 
     /* =====================================================
