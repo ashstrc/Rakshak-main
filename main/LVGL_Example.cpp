@@ -855,32 +855,22 @@ static void message_button_event(lv_event_t *e)
     const char *command =
         (const char *)lv_event_get_user_data(e);
 
-    if(command == NULL)
-        return;
+    Serial.println();
+    Serial.println("================================");
+    Serial.println("MESSAGE BUTTON CLICKED");
+    Serial.println("================================");
 
-    Serial.print("MESSAGE BUTTON: ");
+    if(command == NULL)
+    {
+        Serial.println("COMMAND = NULL");
+        Serial.println("================================");
+        return;
+    }
+
+    Serial.print("COMMAND = ");
     Serial.println(command);
 
-    // Update UI first so we know the button definitely fired
-    if(strcmp(command, "ZORO SEND HELP") == 0)
-    {
-        Messages_AddRecent("HELP");
-    }
-    else if(strcmp(command, "ZORO SEND ENEMY") == 0)
-    {
-        Messages_AddRecent("ENEMY");
-    }
-    else if(strcmp(command, "ZORO SEND FALLBACK") == 0)
-    {
-        Messages_AddRecent("FALLBACK");
-    }
-    else if(strcmp(command, "ZORO SEND AMBUSH") == 0)
-    {
-        Messages_AddRecent("AMBUSH");
-    }
-
-    // Existing voice/message system
-    Voice_HandleCommand(command);
+    Serial.println("================================");
 }
 
 static void Messages_AddRecent(const char *message)

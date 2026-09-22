@@ -5,6 +5,7 @@
 
 #include "LVGL_Driver.h"
 
+
 /*
  * Page navigation functions provided by LVGL_Example.cpp
  */
@@ -44,8 +45,8 @@ static bool touching = false;
  *     x > 272
  */
 
-#define LEFT_TOUCH_ZONE  140
-#define RIGHT_TOUCH_ZONE 272
+#define LEFT_TOUCH_ZONE   35
+#define RIGHT_TOUCH_ZONE  377
 
 
 /* =========================================================
@@ -115,6 +116,7 @@ void Lvgl_Touchpad_Read(
     uint16_t tp_y = 0;
     uint8_t tp_cnt = 0;
 
+
     bool pressed =
         Touch_Get_xy(
             &tp_x,
@@ -132,50 +134,81 @@ void Lvgl_Touchpad_Read(
     if(pressed && tp_cnt > 0)
     {
         /*
-         * Convert raw SPD2010 coordinates
-         * to display coordinates.
+         * IMPORTANT
+         *
+         * SPD2010 raw coordinates already correspond
+         * to the physical display coordinates.
+         *
+         * DO NOT invert them.
          */
         int16_t x =
-            411 - tp_x;
+            tp_x;
 
         int16_t y =
-            411 - tp_y;
-
-        Serial.print("TOUCH X = ");
-        Serial.println(x);
+            tp_y;
 
 
-        data->point.x = x;
-        data->point.y = y;
+        /*
+         * Give coordinates to LVGL.
+         *
+         * This allows normal LVGL buttons to receive
+         * the correct touch position.
+         */
+        data->point.x =
+            x;
+
+        data->point.y =
+            y;
 
         data->state =
             LV_INDEV_STATE_PR;
 
 
         /*
-         * Only react once when the finger
-         * initially touches the screen.
+         * Debug only on the initial touch.
+         *
+         * This lets us verify the coordinate mapping
+         * without flooding Serial.
          */
         if(!touching)
         {
             touching = true;
 
+            Serial.print("LVGL TOUCH -> X=");
+            Serial.print(x);
+
+            Serial.print(" Y=");
+            Serial.println(y);
+
 
             /*
-             * LEFT SIDE
+             * =================================================
+             * PAGE NAVIGATION
+             * =================================================
+             *
+             * Physical LEFT:
+             *     Radar -> Messages
+             *     Status -> Radar
+             *
+             * Physical RIGHT:
+             *     Radar -> Status
+             *     Messages -> Radar
+             *
+             * CENTER:
+             *     Nothing
              */
-            if(x < LEFT_TOUCH_ZONE)
-                {
-                    Page_Touch_Right();
-                }
-            else if(x > RIGHT_TOUCH_ZONE)
-                {
-                    Page_Touch_Left();
-                }
 
+            if(x < LEFT_TOUCH_ZONE)
+            {
+                Page_Touch_Left();
+            }
+            else if(x > RIGHT_TOUCH_ZONE)
+            {
+                Page_Touch_Right();
+            }
 
             /*
-             * CENTER
+             * CENTER:
              *
              * Do nothing.
              */
@@ -231,20 +264,25 @@ void Lvgl_Init(void)
         &disp_drv
     );
 
+
     disp_drv.hor_res =
         412;
 
     disp_drv.ver_res =
         412;
 
+
     disp_drv.flush_cb =
         Lvgl_Display_LCD;
+
 
     disp_drv.rounder_cb =
         Lvgl_port_rounder_callback;
 
+
     disp_drv.draw_buf =
         &draw_buf;
+
 
     lv_disp_drv_register(
         &disp_drv
@@ -261,11 +299,14 @@ void Lvgl_Init(void)
         &indev_drv
     );
 
+
     indev_drv.type =
         LV_INDEV_TYPE_POINTER;
 
+
     indev_drv.read_cb =
         Lvgl_Touchpad_Read;
+
 
     lv_indev_drv_register(
         &indev_drv
@@ -281,8 +322,10 @@ void Lvgl_Loop(void)
 {
     static uint32_t lastTick = 0;
 
+
     uint32_t now =
         millis();
+
 
     uint32_t diff =
         now - lastTick;
@@ -300,6 +343,7 @@ void Lvgl_Loop(void)
 
 
     lv_timer_handler();
+
 
     delay(1);
 }
