@@ -49,9 +49,21 @@ void Speech_PlayWord(const char* word)
     path += word;
     path += ".mp3";
 
+    Serial.print("SPEECH QUEUE: ");
+    Serial.println(path);
+
+    if(!SD_MMC.exists(path.c_str()))
+    {
+        Serial.print("AUDIO FILE MISSING: ");
+        Serial.println(path);
+        return;
+    }
+
+    Serial.print("AUDIO FILE FOUND: ");
+    Serial.println(path);
+
     Speech_Play(path.c_str());
 }
-
 
 /* ------------------------------------------------ */
 /* UPDATE                                           */

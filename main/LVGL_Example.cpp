@@ -53,6 +53,9 @@ static float sweep_angle = 0;
 
 static float pulse_radius[MAX_TARGETS] = {0};
 
+static String recent_messages[MAX_RECENT_MESSAGES];
+static int recent_message_count = 0;
+
 
 /* =========================================================
    OTHER PAGE OBJECTS
@@ -61,8 +64,7 @@ static float pulse_radius[MAX_TARGETS] = {0};
 static lv_obj_t *msg_label;
 static lv_obj_t *status_container;
 
-static String recent_messages[MAX_RECENT_MESSAGES];
-static int recent_message_count = 0;
+
 
 
 #define PAGE_ANIMATION_TIME 180
@@ -844,7 +846,69 @@ sweep_angle = 0;
 // MESSAGE HISTORY
 // ============================================
 
-static void Messages_AddRecent(const char *message);
+static void Messages_AddRecent(const char *message)
+{
+    if(message == NULL)
+        return;
+
+
+    /*
+     * Shift older messages down.
+     */
+    for(int i = MAX_RECENT_MESSAGES - 1; i > 0; i--)
+    {
+        recent_messages[i] =
+            recent_messages[i - 1];
+    }
+
+
+    /*
+     * Add newest message at the top.
+     */
+    recent_messages[0] =
+        String("> ") + message;
+
+
+    if(recent_message_count < MAX_RECENT_MESSAGES)
+    {
+        recent_message_count++;
+    }
+
+
+    /*
+     * Update the display.
+     */
+    if(msg_label == NULL)
+        return;
+
+
+    String text = "";
+
+
+    for(int i = 0; i < recent_message_count; i++)
+    {
+        text += recent_messages[i];
+
+
+        if(i < recent_message_count - 1)
+        {
+            text += "\n";
+        }
+    }
+
+
+    lv_label_set_text(
+        msg_label,
+        text.c_str()
+    );
+
+
+    lv_obj_set_style_text_color(
+        msg_label,
+        lv_color_hex(0xFFFFFF),
+        0
+    );
+}
 
 /* =========================================================
    MESSAGES PAGE
@@ -855,66 +919,50 @@ static void message_button_event(lv_event_t *e)
     const char *command =
         (const char *)lv_event_get_user_data(e);
 
-    Serial.println();
-    Serial.println("================================");
-    Serial.println("MESSAGE BUTTON CLICKED");
-    Serial.println("================================");
 
     if(command == NULL)
-    {
-        Serial.println("COMMAND = NULL");
-        Serial.println("================================");
         return;
-    }
 
+
+    Serial.println();
+    Serial.println("==============================");
+    Serial.println("MESSAGE BUTTON CLICKED");
     Serial.print("COMMAND = ");
     Serial.println(command);
 
-    Serial.println("================================");
-}
 
-static void Messages_AddRecent(const char *message)
-{
-    if(message == NULL)
-        return;
+    /*
+     * Add to recent sent history.
+     */
 
-    // Shift older messages down
-    for(int i = MAX_RECENT_MESSAGES - 1; i > 0; i--)
+    if(strcmp(command, "ZORO SEND HELP") == 0)
     {
-        recent_messages[i] = recent_messages[i - 1];
+        Messages_AddRecent("HELP");
+    }
+    else if(strcmp(command, "ZORO SEND ENEMY") == 0)
+    {
+        Messages_AddRecent("ENEMY");
+    }
+    else if(strcmp(command, "ZORO SEND FALLBACK") == 0)
+    {
+        Messages_AddRecent("FALLBACK");
+    }
+    else if(strcmp(command, "ZORO SEND AMBUSH") == 0)
+    {
+        Messages_AddRecent("AMBUSH");
     }
 
-    // Add newest message
-    recent_messages[0] = String("> ") + message;
 
-    if(recent_message_count < MAX_RECENT_MESSAGES)
-        recent_message_count++;
+    Serial.println("==============================");
 
-    // Update UI if it already exists
-    if(msg_label == NULL)
-        return;
 
-    String text = "";
+    /*
+     * Existing Rakshak voice/message system.
+     */
 
-    for(int i = 0; i < recent_message_count; i++)
-    {
-        text += recent_messages[i];
-
-        if(i < recent_message_count - 1)
-            text += "\n";
-    }
-
-    lv_label_set_text(
-        msg_label,
-        text.c_str()
-    );
-
-    lv_obj_set_style_text_color(
-        msg_label,
-        lv_color_hex(0xFFFFFF),
-        0
-    );
+    Voice_HandleCommand(command);
 }
+
 
 static void build_messages_page(lv_obj_t *parent)
 {
