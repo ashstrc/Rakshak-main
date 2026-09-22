@@ -11,7 +11,8 @@
  */
 extern void Page_Touch_Left();
 extern void Page_Touch_Right();
-
+extern void Page_Touch_Top();
+extern void Page_Touch_Bottom();
 
 /* =========================================================
    LVGL DISPLAY BUFFER
@@ -205,6 +206,14 @@ void Lvgl_Touchpad_Read(
             else if(x > RIGHT_TOUCH_ZONE)
             {
                 Page_Touch_Right();
+            }
+            else if(y < 35)
+            {
+                Page_Touch_Top();
+            }
+            else if(y > 377)
+            {
+                Page_Touch_Bottom();
             }
 
             /*

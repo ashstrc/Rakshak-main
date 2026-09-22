@@ -21,6 +21,8 @@
 #include "SD_Card.h"
 #include "TCA9554PWR.h"
 
+#include "MIC_MSM.h"
+
 #define SDA_PIN 11
 #define SCL_PIN 10
 
@@ -69,6 +71,7 @@ void setup() {
   Sensors_Init();
   GPS_Init();
   Voice_Init();
+  MIC_Init();
 }
 
 /* ------------------------------------------------ */

@@ -8,7 +8,8 @@ typedef enum
 {
     PAGE_RADAR = 0,
     PAGE_MESSAGES,
-    PAGE_STATUS
+    PAGE_STATUS,
+    PAGE_MIC
 
 } PageType;
 
