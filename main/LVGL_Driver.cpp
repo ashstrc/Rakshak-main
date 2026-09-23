@@ -48,6 +48,8 @@ static bool touching = false;
 
 #define LEFT_TOUCH_ZONE   35
 #define RIGHT_TOUCH_ZONE  377
+#define TOP_TOUCH_ZONE    70
+#define BOTTOM_TOUCH_ZONE 342
 
 
 /* =========================================================
@@ -207,11 +209,11 @@ void Lvgl_Touchpad_Read(
             {
                 Page_Touch_Right();
             }
-            else if(y < 35)
+            else if(y < TOP_TOUCH_ZONE)
             {
                 Page_Touch_Top();
             }
-            else if(y > 377)
+            else if(y > BOTTOM_TOUCH_ZONE)
             {
                 Page_Touch_Bottom();
             }
@@ -287,6 +289,8 @@ void Lvgl_Init(void)
 
     disp_drv.rounder_cb =
         Lvgl_port_rounder_callback;
+
+    disp_drv.full_refresh = 1;
 
 
     disp_drv.draw_buf =

@@ -1,9 +1,11 @@
+
 #include "LVGL_Example.h"
 #include <math.h>
 #include "sensors.h"
 #include "voice.h"
 #include <string.h>
 #include "MIC_MSM.h"
+#include "Video.h"
 
 /* =========================================================
    CONFIG
@@ -64,6 +66,10 @@ static int recent_message_count = 0;
 
 static lv_obj_t *msg_label;
 static lv_obj_t *status_container;
+static lv_obj_t *videoPage = NULL;
+static bool videoPageVisible = false;
+static lv_obj_t *video_toggle;
+static lv_obj_t *video_status_label;
 
 /* =========================================================
    MIC PAGE OBJECTS
@@ -84,6 +90,7 @@ static void build_messages_page(lv_obj_t *parent);
 static void build_status_page(lv_obj_t *parent);
 static void build_mic_page(lv_obj_t *parent);
 static void page_manager_init();
+static void video_toggle_event(lv_event_t *e);
 
 
 
@@ -116,7 +123,205 @@ static void place_all_pages_normal()
             0
         );
     }
+
+    // ============================================================
+// VIDEO TRANSITION PAGE
+// ============================================================
+
+videoPage = lv_obj_create(lv_scr_act());
+
+lv_obj_set_size(
+    videoPage,
+    SCREEN_W,
+    SCREEN_H
+);
+
+lv_obj_set_pos(
+    videoPage,
+    0,
+    -SCREEN_H
+);
+
+lv_obj_set_style_bg_color(
+    videoPage,
+    lv_color_hex(0x000000),
+    0
+);
+
+lv_obj_set_style_bg_opa(
+    videoPage,
+    LV_OPA_COVER,
+    0
+);
+
+lv_obj_set_style_border_width(
+    videoPage,
+    0,
+    0
+);
+
+lv_obj_set_style_radius(
+    videoPage,
+    0,
+    0
+);
+
+lv_obj_add_flag(
+    videoPage,
+    LV_OBJ_FLAG_HIDDEN
+);
+
+videoPageVisible = false;
+
+// ============================================================
+// VIDEO MODE TITLE
+// ============================================================
+
+lv_obj_t *video_title = lv_label_create(videoPage);
+
+lv_label_set_text(
+    video_title,
+    "VIDEO MODE"
+);
+
+lv_obj_set_style_text_color(
+    video_title,
+    lv_color_hex(0x00FF66),
+    0
+);
+
+lv_obj_set_style_text_font(
+    video_title,
+    &lv_font_montserrat_16,
+    0
+);
+
+lv_obj_align(
+    video_title,
+    LV_ALIGN_TOP_MID,
+    0,
+    55
+);
+
+
+// ============================================================
+// VIDEO TOGGLE
+// ============================================================
+
+video_toggle = lv_btn_create(videoPage);
+
+lv_obj_set_size(
+    video_toggle,
+    170,
+    80
+);
+
+lv_obj_align(
+    video_toggle,
+    LV_ALIGN_CENTER,
+    0,
+    -10
+);
+
+lv_obj_set_style_radius(
+    video_toggle,
+    18,
+    0
+);
+
+lv_obj_set_style_bg_color(
+    video_toggle,
+    lv_color_hex(0x07130D),
+    0
+);
+
+lv_obj_set_style_bg_opa(
+    video_toggle,
+    LV_OPA_COVER,
+    0
+);
+
+lv_obj_set_style_border_width(
+    video_toggle,
+    2,
+    0
+);
+
+lv_obj_set_style_border_color(
+    video_toggle,
+    lv_color_hex(0x00FF66),
+    0
+);
+
+
+// ============================================================
+// TOGGLE LABEL
+// ============================================================
+
+lv_obj_t *video_toggle_label =
+    lv_label_create(video_toggle);
+
+lv_label_set_text(
+    video_toggle_label,
+    "VIDEO OFF"
+);
+
+lv_obj_set_style_text_color(
+    video_toggle_label,
+    lv_color_hex(0x777777),
+    0
+);
+
+lv_obj_set_style_text_font(
+    video_toggle_label,
+    &lv_font_montserrat_16,
+    0
+);
+
+lv_obj_center(video_toggle_label);
+
+
+// ============================================================
+// VIDEO STATUS
+// ============================================================
+
+video_status_label =
+    lv_label_create(videoPage);
+
+lv_label_set_text(
+    video_status_label,
+    "VIDEO STANDBY"
+);
+
+lv_obj_set_style_text_color(
+    video_status_label,
+    lv_color_hex(0x777777),
+    0
+);
+
+lv_obj_set_style_text_font(
+    video_status_label,
+    &lv_font_montserrat_14,
+    0
+);
+
+lv_obj_align(
+    video_status_label,
+    LV_ALIGN_CENTER,
+    0,
+    85
+);
+
+lv_obj_add_event_cb(
+    video_toggle,
+    video_toggle_event,
+    LV_EVENT_CLICKED,
+    NULL
+);
+
 }
+
+
 
 
 /* =========================================================
@@ -286,6 +491,159 @@ static void animate_mic_page(
     lv_anim_start(&anim);
 }
 
+/* =========================================================
+   VIDEO PAGE VERTICAL ANIMATION
+   ========================================================= */
+
+static void video_page_anim_exec(
+    void *obj,
+    int32_t value)
+{
+    lv_obj_set_y(
+        (lv_obj_t *)obj,
+        value
+    );
+}
+
+
+static void video_page_animation_finished(
+    lv_anim_t *anim)
+{
+    (void)anim;
+
+    videoPageVisible = true;
+    page_animating = false;
+}
+
+
+/* ---------------------------------------------------------
+   VIDEO PAGE: TOP -> CENTER
+   --------------------------------------------------------- */
+
+static void animate_video_page_in()
+{
+    if(videoPage == NULL)
+        return;
+
+    lv_obj_clear_flag(
+        videoPage,
+        LV_OBJ_FLAG_HIDDEN
+    );
+
+    lv_obj_set_x(
+        videoPage,
+        0
+    );
+
+    lv_obj_set_y(
+        videoPage,
+        -SCREEN_H
+    );
+
+    lv_anim_t anim;
+
+    lv_anim_init(&anim);
+
+    lv_anim_set_var(
+        &anim,
+        videoPage
+    );
+
+    lv_anim_set_values(
+        &anim,
+        -SCREEN_H,
+        0
+    );
+
+    lv_anim_set_time(
+        &anim,
+        PAGE_ANIMATION_TIME
+    );
+
+    lv_anim_set_path_cb(
+        &anim,
+        lv_anim_path_ease_out
+    );
+
+    lv_anim_set_exec_cb(
+        &anim,
+        video_page_anim_exec
+    );
+
+    lv_anim_set_ready_cb(
+        &anim,
+        video_page_animation_finished
+    );
+
+    page_animating = true;
+
+    lv_anim_start(&anim);
+}
+
+/* ---------------------------------------------------------
+   VIDEO PAGE: CENTER -> BOTTOM
+   --------------------------------------------------------- */
+
+static void animate_video_page_out()
+{
+    if(videoPage == NULL)
+        return;
+
+    lv_anim_t anim;
+
+    lv_anim_init(&anim);
+
+    lv_anim_set_var(
+        &anim,
+        videoPage
+    );
+
+    lv_anim_set_values(
+        &anim,
+        0,
+        SCREEN_H
+    );
+
+    lv_anim_set_time(
+        &anim,
+        PAGE_ANIMATION_TIME
+    );
+
+    lv_anim_set_path_cb(
+        &anim,
+        lv_anim_path_ease_out
+    );
+
+    lv_anim_set_exec_cb(
+        &anim,
+        video_page_anim_exec
+    );
+
+    lv_anim_set_ready_cb(
+        &anim,
+        [](lv_anim_t *anim)
+        {
+            (void)anim;
+
+            lv_obj_add_flag(
+                videoPage,
+                LV_OBJ_FLAG_HIDDEN
+            );
+
+            lv_obj_set_y(
+                videoPage,
+                -SCREEN_H
+            );
+
+            videoPageVisible = false;
+            page_animating = false;
+        }
+    );
+
+    page_animating = true;
+
+    lv_anim_start(&anim);
+}
 
 /* =========================================================
    CHANGE PAGE
@@ -349,6 +707,30 @@ void Page_Touch_Top()
 {
     if(page_animating)
         return;
+
+    // ============================================================
+    // VIDEO -> RADAR
+    // ============================================================
+
+    if(videoPageVisible)
+    {
+        animate_video_page_out();
+        return;
+    }
+
+    // ============================================================
+    // RADAR -> VIDEO
+    // ============================================================
+
+    if(currentPage == PAGE_RADAR)
+    {
+        animate_video_page_in();
+        return;
+    }
+
+    // ============================================================
+    // EXISTING MIC -> RADAR
+    // ============================================================
 
     if(currentPage != PAGE_MIC)
         return;
@@ -426,6 +808,21 @@ void Page_Touch_Top()
 
 void Page_Touch_Bottom()
 {
+
+        // LIVE VIDEO -> VIDEO MODE
+    if(Video_IsActive())
+    {
+        Video_RequestStop();
+        return;
+    }
+
+        // VIDEO MODE -> RADAR
+    if(videoPageVisible)
+    {
+        animate_video_page_out();
+        return;
+    }
+
     if(page_animating)
         return;
 
@@ -1708,6 +2105,27 @@ static void mic_button_event(lv_event_t *e)
     }
 }
 
+static void video_toggle_event(lv_event_t *e)
+{
+    (void)e;
+
+    if(page_animating)
+        return;
+
+    if(!videoPageVisible)
+        return;
+
+    Serial.println("[VIDEO] Toggle pressed");
+
+    /*
+     * DO NOT hide videoPage here.
+     *
+     * It must remain visible until Video.cpp
+     * takes over the physical LCD.
+     */
+    Video_RequestStart();
+}   
+
 
 static void build_mic_page(lv_obj_t *parent)
 {
@@ -2140,6 +2558,8 @@ static void page_manager_init()
             pages[i],
             LV_OBJ_FLAG_SCROLLABLE
         );
+
+        
     }
 
 
