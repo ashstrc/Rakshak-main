@@ -17,6 +17,7 @@
 #include "Audio_PCM5101.h"
 
 #include "LVGL_Example.h"
+#include "Video.h"
 
 #include "SD_Card.h"
 #include "TCA9554PWR.h"
@@ -28,6 +29,26 @@
 
 /* ---------- PAGE TRACK (SYNC WITH UI) ---------- */
 extern PageType currentPage;  // from LVGL_Example.cpp
+
+/* ---------- VIDEO STATE ---------- */
+bool videoActive = false;
+static bool videoStarted = false;
+
+void Video_RequestStart()
+{
+  Serial.println("[VIDEO] Video_RequestStart()");
+  videoActive = true;
+}
+
+void Video_RequestStop()
+{
+  videoActive = false;
+}
+
+bool Video_IsActive()
+{
+  return videoActive;
+}
 
 /* ---------- RADAR STORAGE ---------- */
 RadarData radarTargets[10];
@@ -93,7 +114,34 @@ void loop() {
   Voice_Update();
   Speech_Update();
 
-  Lvgl_Loop();
+  /* ------------------------------------------------ */
+  /* VIDEO / LVGL DISPLAY OWNERSHIP                   */
+  /* ------------------------------------------------ */
+
+  if (videoActive)
+  {
+    if (!videoStarted)
+    {
+      Serial.println("[VIDEO] Calling Video_Begin()");
+      Video_Begin();
+      videoStarted = true;
+    }
+
+    Video_Update();
+  }
+  else
+  {
+    if (videoStarted)
+    {
+      Video_Stop();
+      videoStarted = false;
+
+      /* Force LVGL to redraw after direct video rendering */
+      lv_obj_invalidate(lv_scr_act());
+    }
+
+    Lvgl_Loop();
+  }
 
   /* ------------------------------------------------ */
   /* UART → RADAR DATA                                */
