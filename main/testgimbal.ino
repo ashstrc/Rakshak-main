@@ -194,68 +194,115 @@ static esp_err_t home_handler(httpd_req_t *req) {
 
 // ================= STREAM HANDLER =================
 
-static esp_err_t stream_handler(httpd_req_t *req) {
+static void stream_task(void *arg)
+{
+    httpd_req_t *req = (httpd_req_t *)arg;
+    camera_fb_t *fb = NULL;
+    esp_err_t res = ESP_OK;
+    char part_buf[64];
 
-  camera_fb_t *fb = NULL;
-  esp_err_t res = ESP_OK;
+    Serial.println("[STREAM] Async client started");
 
-  char part_buf[64];
-
-  res = httpd_resp_set_type(req, STREAM_CONTENT_TYPE);
-
-  if (res != ESP_OK) {
-    return res;
-  }
-
-  while (true) {
-
-    fb = esp_camera_fb_get();
-
-    if (!fb) {
-      Serial.println("Camera capture failed");
-      res = ESP_FAIL;
-      break;
+    res = httpd_resp_set_type(req, STREAM_CONTENT_TYPE);
+    if (res != ESP_OK) {
+        Serial.println("[STREAM] Failed to set content type");
+        httpd_req_async_handler_complete(req);
+        vTaskDelete(NULL);
+        return;
     }
 
-    res = httpd_resp_send_chunk(
-      req,
-      STREAM_BOUNDARY,
-      strlen(STREAM_BOUNDARY)
+    while (true) {
+        fb = esp_camera_fb_get();
+
+        if (!fb) {
+            Serial.println("[STREAM] Camera capture failed");
+            res = ESP_FAIL;
+            break;
+        }
+
+        res = httpd_resp_send_chunk(
+            req,
+            STREAM_BOUNDARY,
+            strlen(STREAM_BOUNDARY)
+        );
+
+        if (res == ESP_OK) {
+            size_t hlen = snprintf(
+                part_buf,
+                sizeof(part_buf),
+                STREAM_PART,
+                fb->len
+            );
+
+            res = httpd_resp_send_chunk(
+                req,
+                part_buf,
+                hlen
+            );
+        }
+
+        if (res == ESP_OK) {
+            res = httpd_resp_send_chunk(
+                req,
+                (const char *)fb->buf,
+                fb->len
+            );
+        }
+
+        esp_camera_fb_return(fb);
+        fb = NULL;
+
+        if (res != ESP_OK) {
+            break;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1));
+    }
+
+    if (fb) {
+        esp_camera_fb_return(fb);
+    }
+
+    Serial.println("[STREAM] Async client disconnected");
+
+    httpd_req_async_handler_complete(req);
+    vTaskDelete(NULL);
+}
+
+static esp_err_t stream_handler(httpd_req_t *req)
+{
+    httpd_req_t *async_req = NULL;
+
+    esp_err_t err = httpd_req_async_handler_begin(
+        req,
+        &async_req
     );
 
-    if (res == ESP_OK) {
-
-      size_t hlen = snprintf(
-        part_buf,
-        64,
-        STREAM_PART,
-        fb->len
-      );
-
-      res = httpd_resp_send_chunk(
-        req,
-        part_buf,
-        hlen
-      );
+    if (err != ESP_OK) {
+        Serial.printf(
+            "[STREAM] Async handler begin failed: %d\n",
+            err
+        );
+        return err;
     }
 
-    if (res == ESP_OK) {
+    BaseType_t taskResult = xTaskCreate(
+        stream_task,
+        "stream_task",
+        8192,
+        async_req,
+        3,
+        NULL
+    );
 
-      res = httpd_resp_send_chunk(
-        req,
-        (const char *)fb->buf,
-        fb->len
-      );
+    if (taskResult != pdPASS) {
+        Serial.println("[STREAM] Failed to create stream task");
+        httpd_req_async_handler_complete(async_req);
+        return ESP_FAIL;
     }
 
-    esp_camera_fb_return(fb);
-
-    if (res != ESP_OK) {
-      break;
-    }
-  }
-
-  return res;
+    Serial.println("[STREAM] Async stream task created");
+    return ESP_OK;
 }
 
 // ================= START SERVER =================
@@ -265,6 +312,10 @@ void startCameraServer() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
   config.server_port = 80;
+
+// Two long-running async video streams + control requests.
+config.max_open_sockets = 8;
+config.lru_purge_enable = true;
 
   httpd_handle_t stream_httpd = NULL;
 
@@ -380,7 +431,7 @@ void setup() {
 
     config.frame_size = FRAMESIZE_VGA;
     config.jpeg_quality = 15;
-    config.fb_count = 1;
+    config.fb_count = 3;
 
   } else {
 
@@ -388,10 +439,10 @@ void setup() {
 
     config.frame_size = FRAMESIZE_QQVGA;
     config.jpeg_quality = 15;
-    config.fb_count = 1;
+    config.fb_count = 2;
   }
 
-  config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+  config.grab_mode = CAMERA_GRAB_LATEST;
   config.fb_location = CAMERA_FB_IN_PSRAM;
 
   // -------- INIT CAMERA --------
