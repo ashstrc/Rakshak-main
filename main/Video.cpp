@@ -95,7 +95,7 @@ static const size_t MAX_JPEG_SIZE = 256 * 1024;
  * Therefore 2 rows safely fit inside the configured
  * maximum transfer size.
  */
-static const int LCD_TRANSFER_LINES = 2;
+static const int LCD_TRANSFER_LINES = 8;
 
 static const size_t LCD_TRANSFER_BUFFER_SIZE =
     DISPLAY_WIDTH *
