@@ -1,0 +1,245 @@
+#include "ESPNow.h"
+
+#include <WiFi.h>
+#include <esp_now.h>
+#include <math.h>
+
+/* =========================================================
+   PACKET
+   ========================================================= */
+
+typedef struct __attribute__((packed))
+{
+    uint8_t watch_id;
+
+    float heading;
+
+    float gx;
+    float gy;
+    float gz;
+
+    float heartRate;
+
+    uint8_t health;
+
+    uint8_t gpsFix;
+    uint8_t sats;
+
+    float hdop;
+
+    float lat;
+    float lon;
+
+} Packet;
+
+/* =========================================================
+   ESP-NOW STATE
+   ========================================================= */
+
+static volatile bool newData = false;
+
+static Packet rxPacket;
+static int rxRSSI = 0;
+
+/* =========================================================
+   RSSI → DISTANCE
+   Same calculation used by XIAO
+   ========================================================= */
+
+static float rssi_to_distance(int rssi)
+{
+    float TxPower = -40;
+    float N = 2.5;
+
+    return pow(
+        10.0,
+        (TxPower - rssi) / (10 * N)
+    );
+}
+
+/* =========================================================
+   ESP-NOW RECEIVE CALLBACK
+   ========================================================= */
+
+static void onReceive(
+    const esp_now_recv_info_t *info,
+    const uint8_t *data,
+    int len
+)
+{
+    if(data == nullptr)
+        return;
+
+    if(len != sizeof(Packet))
+        return;
+
+    memcpy(
+        &rxPacket,
+        data,
+        sizeof(Packet)
+    );
+
+    rxRSSI =
+        info->rx_ctrl->rssi;
+
+    newData = true;
+}
+
+/* =========================================================
+   INIT
+   ========================================================= */
+
+void ESPNow_Init()
+{
+    Serial.println();
+    Serial.println("================================");
+    Serial.println("ESP-NOW INIT");
+    Serial.println("================================");
+
+    /*
+       IMPORTANT:
+
+       Do NOT force WiFi.setChannel(1) here.
+
+       Rakshak already uses Wi-Fi for the
+       camera stream.
+
+       We will keep the existing Wi-Fi
+       connection/channel intact.
+    */
+
+    if(esp_now_init() != ESP_OK)
+    {
+        Serial.println("ESP-NOW INIT FAILED");
+        return;
+    }
+
+    esp_now_register_recv_cb(
+        onReceive
+    );
+
+    /*
+       Broadcast peer
+    */
+
+    uint8_t broadcastAddress[] =
+    {
+        0xff,
+        0xff,
+        0xff,
+        0xff,
+        0xff,
+        0xff
+    };
+
+    esp_now_peer_info_t peer = {};
+
+    memcpy(
+        peer.peer_addr,
+        broadcastAddress,
+        6
+    );
+
+    /*
+       0 = use current Wi-Fi channel
+    */
+
+    peer.channel = 0;
+    peer.encrypt = false;
+
+    esp_err_t result =
+        esp_now_add_peer(&peer);
+
+    if(result != ESP_OK &&
+       result != ESP_ERR_ESPNOW_EXIST)
+    {
+        Serial.print(
+            "ESP-NOW PEER FAILED: "
+        );
+
+        Serial.println(
+            (int)result
+        );
+
+        return;
+    }
+
+    Serial.println("ESP-NOW READY");
+}
+
+/* =========================================================
+   UPDATE
+   ========================================================= */
+
+void ESPNow_Update()
+{
+    if(!newData)
+        return;
+
+    /*
+       Consume callback data.
+    */
+
+    newData = false;
+
+    float distance =
+        rssi_to_distance(rxRSSI);
+
+    Serial.println();
+    Serial.println(
+        "------ ESP-NOW RX ------"
+    );
+
+    Serial.print("Watch: ");
+    Serial.println(
+        rxPacket.watch_id
+    );
+
+    Serial.print("RSSI: ");
+    Serial.println(
+        rxRSSI
+    );
+
+    Serial.print("Distance: ");
+    Serial.println(
+        distance
+    );
+
+    Serial.print("Heading: ");
+    Serial.println(
+        rxPacket.heading
+    );
+
+    Serial.println(
+        "------------------------"
+    );
+}
+
+/* =========================================================
+   GETTERS
+   ========================================================= */
+
+bool ESPNow_HasRadarData()
+{
+    return newData;
+}
+
+uint8_t ESPNow_GetWatchID()
+{
+    return rxPacket.watch_id;
+}
+
+float ESPNow_GetHeading()
+{
+    return rxPacket.heading;
+}
+
+float ESPNow_GetDistance()
+{
+    return rssi_to_distance(rxRSSI);
+}
+
+int ESPNow_GetRSSI()
+{
+    return rxRSSI;
+}

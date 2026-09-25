@@ -1,4 +1,3 @@
-
 #include "LVGL_Example.h"
 #include <math.h>
 #include "sensors.h"
@@ -1225,6 +1224,9 @@ static void build_radar_page(lv_obj_t *parent)
         radar,
         LV_OBJ_FLAG_SCROLLABLE
     );
+
+
+   
 
 
     /* =====================================================

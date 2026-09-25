@@ -1,0 +1,14 @@
+#pragma once
+
+#include <Arduino.h>
+
+void ESPNow_Init();
+void ESPNow_Update();
+void ESPNow_Stop(); 
+
+bool ESPNow_HasRadarData();
+
+uint8_t ESPNow_GetWatchID();
+float ESPNow_GetHeading();
+float ESPNow_GetDistance();
+int ESPNow_GetRSSI();

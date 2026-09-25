@@ -24,6 +24,7 @@
 #include "MIC_MSM.h"
 
 #include "Video.h"
+#include "ESPNow.h"
 #include "network_fix.h"
 
 #include "esp_heap_caps.h"
@@ -227,6 +228,13 @@ void setup()
 
   WiFi_Init();
 
+  Serial.print("[WIFI] Channel: ");
+  Serial.println(WiFi.channel());
+
+  Serial.print("[WIFI] MAC: ");
+  Serial.println(WiFi.macAddress());
+
+  ESPNow_Init();
 
   /* -----------------------------------------------------
      START WITH RADAR PAGE
@@ -314,6 +322,8 @@ void loop()
 
   Speech_Update();
 
+  ESPNow_Update();
+
 
   /* =====================================================
    VIDEO / LVGL DISPLAY MODE
@@ -328,23 +338,17 @@ if (videoActive)
    */
 
   if (!videoStarted)
-  {
+{
     Serial.println("[VIDEO] Starting live video...");
+
+    // Pause ESP-NOW so the Wi-Fi radio is dedicated to camera streaming.
+    ESPNow_Stop();
+
+    delay(100);
 
     Video_Begin();
     videoStarted = true;
-
-    /*
-     * Now that Video.cpp owns the LCD, hide the LVGL
-     * Video Mode page.
-     *
-     * IMPORTANT:
-     * We do this AFTER Video_Begin(), not in the
-     * button callback. This prevents the Radar page
-     * from flashing between the two states.
-     */
-    
-  }
+} 
 
 
   /*

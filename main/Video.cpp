@@ -49,7 +49,7 @@
  * CAMERA CONFIGURATION
  * ============================================================ */
 
-static const char *VIDEO_HOST = "10.38.105.121";
+static const char *VIDEO_HOST = "10.206.84.121";
 static const uint16_t VIDEO_PORT = 80;
 static const char *VIDEO_PATH = "/stream";
 

@@ -1,4 +1,5 @@
 #include "MIC_MSM.h"
+#include "voice.h"
 #include <math.h>
 #include <esp_heap_caps.h>
 
@@ -116,6 +117,81 @@ static void EI_RunInference()
         Serial.println(
             result.classification[i].value,
             4
+        );
+    }
+
+        /* =========================================================
+       RAKSHAK VOICE COMMAND BRIDGE
+       ========================================================= */
+
+    size_t bestIndex = 0;
+    float bestScore = 0.0f;
+
+    for(size_t i = 0;
+        i < EI_CLASSIFIER_LABEL_COUNT;
+        i++)
+    {
+        if(result.classification[i].value > bestScore)
+        {
+            bestScore =
+                result.classification[i].value;
+
+            bestIndex = i;
+        }
+    }
+
+    const char *label =
+        result.classification[bestIndex].label;
+
+    Serial.print("BEST LABEL: ");
+    Serial.print(label);
+
+    Serial.print(" | SCORE: ");
+    Serial.println(bestScore, 4);
+
+    if(bestScore >= 0.70f)
+    {
+        if(strcmp(label, "help") == 0)
+        {
+            Voice_HandleCommand(
+                "ZORO SEND HELP"
+            );
+        }
+        else if(strcmp(label, "enemy") == 0)
+        {
+            Voice_HandleCommand(
+                "ZORO SEND ENEMY"
+            );
+        }
+        else if(strcmp(label, "fallback") == 0)
+        {
+            Voice_HandleCommand(
+                "ZORO SEND FALLBACK"
+            );
+        }
+        else if(strcmp(label, "ambush") == 0)
+        {
+            Voice_HandleCommand(
+                "ZORO SEND AMBUSH"
+            );
+        }
+        else if(strcmp(label, "status") == 0)
+        {
+            Voice_HandleCommand(
+                "ZORO STATUS"
+            );
+        }
+        else if(strcmp(label, "Read") == 0)
+        {
+            Voice_HandleCommand(
+                "ZORO READ"
+            );
+        }
+    }
+    else
+    {
+        Serial.println(
+            "VOICE: confidence too low - ignored"
         );
     }
 
@@ -323,7 +399,7 @@ void MICTask(void *parameter)
     {
         if(eiAudioIndex < EI_CLASSIFIER_RAW_SAMPLE_COUNT)
         {
-            int32_t amplified = (int32_t)buffer[i] * 4;
+            int32_t amplified = (int32_t)buffer[i];
 
         // Prevent int16 overflow/clipping
             if(amplified > 32767)
