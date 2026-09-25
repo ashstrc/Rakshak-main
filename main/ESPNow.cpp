@@ -417,20 +417,15 @@ void ESPNow_Update()
         sendTelemetry();
     }
 
-    /*
-     * -----------------------------------------------------
-     * RX
-     * -----------------------------------------------------
-     */
 
-    if(!newData)
-        return;
 
-    /*
-     * Consume received packet.
-     */
 
-    newData = false;
+/*
+ * Keep the latest packet available for the radar.
+ *
+ * Do NOT clear newData here.
+ * The radar will consume/acknowledge the update.
+ */
 
     float distance =
         rssi_to_distance(
@@ -496,4 +491,9 @@ float ESPNow_GetDistance()
 int ESPNow_GetRSSI()
 {
     return rxRSSI;
+}
+
+void ESPNow_ClearRadarData()
+{
+    newData = false;
 }

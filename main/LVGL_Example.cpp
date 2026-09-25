@@ -1344,7 +1344,7 @@ static void build_radar_page(lv_obj_t *parent)
 
         lv_obj_set_style_bg_color(
             targets[i],
-            lv_color_hex(0xFF0000),
+            lv_color_hex(0x00FF66),
             0
         );
 
@@ -1386,7 +1386,7 @@ static void build_radar_page(lv_obj_t *parent)
 
         lv_obj_set_style_bg_color(
             pulse[i],
-            lv_color_hex(0xFF0000),
+            lv_color_hex(0x00FF66),
             0
         );
 
@@ -1404,7 +1404,7 @@ static void build_radar_page(lv_obj_t *parent)
 
         lv_obj_set_style_border_color(
             pulse[i],
-            lv_color_hex(0xFF0000),
+            lv_color_hex(0x00FF66),
             0
         );
 

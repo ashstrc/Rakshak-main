@@ -324,6 +324,65 @@ void loop()
 
   ESPNow_Update();
 
+  /* =====================================================
+   ESP-NOW → RADAR DATA
+   ===================================================== */
+
+if (ESPNow_HasRadarData())
+{
+    uint8_t id = ESPNow_GetWatchID();
+
+    float heading = ESPNow_GetHeading();
+
+    float distance = ESPNow_GetDistance();
+
+    /*
+     * Only Watch 2 should appear as the target.
+     */
+    if (id == 2)
+    {
+        bool found = false;
+
+        for (int i = 0; i < radarCount; i++)
+        {
+            if (radarTargets[i].id == id)
+            {
+                radarTargets[i].heading = heading;
+                radarTargets[i].distance = distance;
+
+                found = true;
+                break;
+            }
+        }
+
+        /*
+         * First time seeing Watch 2.
+         */
+        if (!found && radarCount < 10)
+        {
+            radarTargets[radarCount].id = id;
+            radarTargets[radarCount].heading = heading;
+            radarTargets[radarCount].distance = distance;
+
+            radarCount++;
+        }
+
+        Serial.println("[RADAR] Watch 2 target updated");
+
+        Serial.print("[RADAR] Heading: ");
+        Serial.println(heading);
+
+        Serial.print("[RADAR] Distance: ");
+        Serial.println(distance);
+    }
+
+    /*
+     * Tell ESP-NOW that main.ino consumed
+     * this received packet.
+     */
+    ESPNow_ClearRadarData();
+}
+
 
   /* =====================================================
    VIDEO / LVGL DISPLAY MODE
@@ -459,123 +518,7 @@ else
 }
 
 
- /* =====================================================
-     UART → RADAR DATA
-     ===================================================== */
 
-  if (Serial.available())
-  {
-    String line =
-      Serial.readStringUntil('\n');
-
-    line.trim();
-
-
-    if (line.startsWith("RADAR"))
-    {
-      line =
-        line.substring(6);
-
-
-      int end =
-        line.indexOf(",END");
-
-
-      if (end != -1)
-      {
-        line =
-          line.substring(0, end);
-      }
-
-
-      String t[3];
-
-      int i = 0;
-
-
-      while (
-        line.length() &&
-        i < 3
-      )
-      {
-        int c =
-          line.indexOf(',');
-
-           if (c == -1)
-        {
-          t[i++] = line;
-
-          break;
-        }
-
-
-        t[i++] =
-          line.substring(
-            0,
-            c
-          );
-
-
-        line =
-          line.substring(
-            c + 1
-          );
-      }
-
-
-      if (i == 3)
-      {
-        uint8_t id =
-          t[0].toInt();
-
-        float heading =
-          t[1].toFloat();
-
-        float dist =
-          t[2].toFloat();
-
-
-        bool found = false;
-
-
-        for (
-          int j = 0;
-          j < radarCount;
-          j++
-        )
-        {
-          if (
-            radarTargets[j].id == id
-            )
-          {
-            radarTargets[j].heading =
-              heading;
-
-            radarTargets[j].distance =
-              dist;
-
-            found = true;
-
-            break;
-          }
-        }
-
-
-        if (
-          !found &&
-          radarCount < 10
-        )
-        {
-          radarTargets[radarCount++] =
-          {
-            id,
-            heading,
-            dist
-          };
-        }
-      }
-    }
-  }
 
 
 /* =====================================================

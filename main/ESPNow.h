@@ -12,3 +12,5 @@ uint8_t ESPNow_GetWatchID();
 float ESPNow_GetHeading();
 float ESPNow_GetDistance();
 int ESPNow_GetRSSI();
+
+void ESPNow_ClearRadarData();
